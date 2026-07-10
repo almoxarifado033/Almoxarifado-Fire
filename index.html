@@ -255,7 +255,12 @@ tr:hover td{background:var(--bg)}
       <div class="form-row">
         <div class="ff"><label>Tipo</label><select id="lt"><option value="entrada">Entrada</option><option value="saida">Saída</option></select></div>
         <div class="ff"><label>Secretaria</label><select id="ls"></select></div>
-        <div class="ff"><label>Item</label><select id="li"></select></div>
+        <div class="ff">
+          <label>Item</label>
+          <input type="text" id="li-search" placeholder="🔍 Pesquisar item..." oninput="filterLancItens()" style="margin-bottom:6px">
+          <select id="li" size="1"></select>
+          <button type="button" id="li-novo" onclick="goToNovoItem()" style="display:none;margin-top:6px;background:none;border:none;color:var(--green-mid);cursor:pointer;padding:0;font-size:12px;font-family:var(--font)">＋ Novo item</button>
+        </div>
       </div>
       <div class="form-row">
         <div class="ff"><label>Quantidade</label><input type="number" id="lq" min="0.001" step="any" placeholder="0"></div>
@@ -394,7 +399,7 @@ tr:hover td{background:var(--bg)}
         <div class="tag-list" id="tg-itens"></div>
         <div class="add-row" style="flex-wrap:wrap">
           <input id="ai-nome" placeholder="Nome do item..." style="flex:2;min-width:140px">
-          <input id="ai-cat" placeholder="Categoria..." style="flex:1;min-width:110px">
+          <select id="ai-cat" style="flex:1;min-width:120px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-family:var(--font);font-size:13px;background:var(--bg);color:var(--text);outline:none"></select>
           <input id="ai-un" placeholder="Un. (un, kg, L...)" style="flex:1;min-width:80px">
           <button class="btn-add" onclick="addItem()">Adicionar</button>
         </div>
@@ -880,10 +885,37 @@ function renderDash() {
 }
 
 // ---- LANÇAMENTO ----
+// Itens em ordem alfabética (por nome).
+function sortedItens() {
+  return S.itens.slice().sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+}
+function itemOptions(list) {
+  return list.map(i=>`<option value="${i.nome}">${i.nome} [${i.cat}]</option>`).join('');
+}
 function initLanc() {
   populateSel('ls', S.secretarias, 'Selecione...');
-  document.getElementById('li').innerHTML = S.itens.map(i=>`<option value="${i.nome}">${i.nome} [${i.cat}]</option>`).join('');
+  filterLancItens();
+  document.getElementById('li-novo').style.display = allowedTabs().includes('config') ? '' : 'none';
   if (!document.getElementById('ld').value) document.getElementById('ld').value = today();
+}
+// Filtra o seletor de itens do lançamento pela barra de pesquisa.
+function filterLancItens() {
+  const q = (document.getElementById('li-search')?.value || '').toLowerCase();
+  const sel = document.getElementById('li');
+  const cur = sel.value;
+  const list = sortedItens().filter(i => !q || (i.nome + ' ' + i.cat).toLowerCase().includes(q));
+  sel.innerHTML = list.length ? itemOptions(list) : '<option value="">Nenhum item encontrado</option>';
+  if (list.some(i => i.nome === cur)) sel.value = cur;
+}
+// Vai direto para a aba Configurações e foca o campo de novo item.
+function goToNovoItem() {
+  const btn = document.querySelector('.nav-tab[data-tab="config"]');
+  if (!btn) { toast('Apenas administradores cadastram itens'); return; }
+  showTab('config', btn);
+  setTimeout(() => {
+    const el = document.getElementById('ai-nome');
+    if (el) { el.scrollIntoView({ behavior:'smooth', block:'center' }); el.focus(); }
+  }, 80);
 }
 async function salvarLanc() {
   const tipo=document.getElementById('lt').value, sec=document.getElementById('ls').value,
@@ -904,7 +936,7 @@ async function salvarLanc() {
 
 // ---- MASSA ----
 function initMassa() {
-  document.getElementById('mi').innerHTML = S.itens.map(i=>`<option value="${i.nome}">${i.nome} [${i.cat}]</option>`).join('');
+  document.getElementById('mi').innerHTML = itemOptions(sortedItens());
   if (!document.getElementById('md').value) document.getElementById('md').value = today();
   document.getElementById('massa-gc').innerHTML = S.secretarias.map(s=>`
     <label class="gc" onclick="this.classList.toggle('sel')">
@@ -1067,6 +1099,7 @@ function printRelatorio() {
 // ---- CONFIG ----
 function renderConfig() {
   updateFbStatus();
+  populateSel('ai-cat', S.categorias, 'Selecione a categoria...');
   document.getElementById('tg-secs').innerHTML=S.secretarias.map((s,i)=>`<div class="tag"><span class="editable" style="cursor:pointer;border-bottom:1px dashed var(--border)" onclick="editSec(${i})">${s}</span><button class="tag-del" onclick="removeSec(${i})">×</button></div>`).join('');
   document.getElementById('tg-itens').innerHTML=S.itens.map((it,i)=>`<div class="tag"><span style="cursor:pointer;border-bottom:1px dashed var(--border)" onclick="editItem(${i})">${it.nome}</span> <span style="font-size:11px;color:var(--text3)">[${it.cat}/${it.un||''}]</span><button class="tag-del" onclick="removeItem(${i})">×</button></div>`).join('');
   document.getElementById('tg-cats').innerHTML=S.categorias.map((c,i)=>`<div class="tag"><span style="cursor:pointer;border-bottom:1px dashed var(--border)" onclick="editCat(${i})">${c}</span><button class="tag-del" onclick="removeCat(${i})">×</button></div>`).join('');
