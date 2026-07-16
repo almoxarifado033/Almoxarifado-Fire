@@ -152,6 +152,13 @@ tr:hover td{background:var(--bg)}
 .btn-danger{padding:9px 18px;background:var(--red-mid);color:#fff;border:none;border-radius:var(--r);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;transition:opacity .15s}
 .btn-danger:hover{opacity:.85}
 
+/* ESTOQUE (por setor) */
+.est-sec{margin-bottom:18px;border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;background:var(--surface)}
+.est-sec-hdr{font-size:12px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;padding:10px 14px;background:var(--bg);border-bottom:1px solid var(--border)}
+.est-setor-hdr{font-size:11px;font-weight:600;color:var(--purple);padding:7px 14px;background:var(--purple-bg);border-bottom:1px solid var(--border);border-top:1px solid var(--border)}
+.est-sec table{width:100%;border-collapse:collapse}
+.est-sec table:first-of-type tr:first-child th{border-top:none}
+
 /* RELATÓRIO */
 #report-output{background:var(--surface);border-radius:var(--rl);border:1px solid var(--border);padding:28px 30px}
 .rep-head{font-size:24px;font-weight:500;letter-spacing:-.3px}
@@ -160,6 +167,7 @@ tr:hover td{background:var(--bg)}
 .rep-rule{border:none;border-top:2px solid var(--text);margin:14px 0 22px}
 .rep-sec{margin-bottom:26px;break-inside:avoid}
 .rep-sec-title{font-size:15px;font-weight:500;color:var(--text);background:var(--bg);padding:11px 14px;border-radius:6px;margin-bottom:2px;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+.rep-setor-title{font-size:13px;font-weight:600;color:var(--purple);padding:8px 14px 2px;print-color-adjust:exact;-webkit-print-color-adjust:exact}
 .rep-table{width:100%;border-collapse:collapse}
 .rep-table th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);font-weight:500;padding:9px 12px;text-align:left;border-bottom:1px solid var(--border)}
 .rep-table th.r,.rep-table td.r{text-align:right}
@@ -223,7 +231,6 @@ tr:hover td{background:var(--bg)}
   <div class="nav-tabs">
     <button class="nav-tab active" data-tab="dashboard" onclick="showTab('dashboard',this)">Dashboard</button>
     <button class="nav-tab" data-tab="lancamento" onclick="showTab('lancamento',this)">Lançamento</button>
-    <button class="nav-tab" data-tab="massa" onclick="showTab('massa',this)">Em massa</button>
     <button class="nav-tab" data-tab="historico" onclick="showTab('historico',this)">Histórico</button>
     <button class="nav-tab" data-tab="estoque" onclick="showTab('estoque',this)">Estoque</button>
     <button class="nav-tab" data-tab="relatorio" onclick="showTab('relatorio',this)">Relatório</button>
@@ -237,6 +244,7 @@ tr:hover td{background:var(--bg)}
     <div class="search-bar"><span class="si">🔍</span><input id="ds-q" placeholder="Pesquisar item, categoria ou secretaria..." oninput="renderDash()"></div>
     <div class="filters">
       <select class="fs" id="ds-sec" onchange="renderDash()"><option value="">Todas as secretarias</option></select>
+      <select class="fs" id="ds-setor" onchange="renderDash()"><option value="">Todos os setores</option></select>
       <select class="fs" id="ds-cat" onchange="renderDash()"><option value="">Todas as categorias</option></select>
       <select class="fs" id="ds-saldo" onchange="renderDash()">
         <option value="">Todos os saldos</option>
@@ -245,7 +253,7 @@ tr:hover td{background:var(--bg)}
         <option value="neg">Saldo negativo</option>
       </select>
     </div>
-    <div class="tw"><table><thead><tr><th>Item</th><th>Categoria</th><th>Secretaria</th><th>Un.</th><th style="text-align:right">Saldo</th></tr></thead><tbody id="dash-tb"></tbody></table></div>
+    <div class="tw"><table><thead><tr><th>Item</th><th>Categoria</th><th>Secretaria</th><th>Setor</th><th>Un.</th><th style="text-align:right">Saldo</th></tr></thead><tbody id="dash-tb"></tbody></table></div>
   </div>
 
   <!-- LANÇAMENTO -->
@@ -254,7 +262,8 @@ tr:hover td{background:var(--bg)}
       <h3>Lançamento individual</h3>
       <div class="form-row">
         <div class="ff"><label>Tipo</label><select id="lt"><option value="entrada">Entrada</option><option value="saida">Saída</option></select></div>
-        <div class="ff"><label>Secretaria</label><select id="ls"></select></div>
+        <div class="ff"><label>Secretaria</label><select id="ls" onchange="updateLancSetores()"></select></div>
+        <div class="ff" id="lsetor-wrap" style="display:none"><label>Setor / Unidade</label><select id="lsetor"></select></div>
         <div class="ff">
           <label>Item</label>
           <input type="text" id="li-search" placeholder="🔍 Pesquisar item..." oninput="filterLancItens()" style="margin-bottom:6px">
@@ -277,46 +286,18 @@ tr:hover td{background:var(--bg)}
     </div>
   </div>
 
-  <!-- EM MASSA -->
-  <div id="tab-massa" class="content" style="display:none">
-    <div class="form-card">
-      <h3>Lançamento em massa — um item em várias secretarias</h3>
-      <div class="form-row">
-        <div class="ff"><label>Tipo</label><select id="mt"><option value="entrada">Entrada</option><option value="saida">Saída</option></select></div>
-        <div class="ff"><label>Item</label><select id="mi"></select></div>
-        <div class="ff"><label>Quantidade por secretaria</label><input type="number" id="mq" min="0.001" step="any" placeholder="0"></div>
-        <div class="ff"><label>Data</label><input type="date" id="md"></div>
-      </div>
-      <div class="form-row">
-        <div class="ff"><label>Nº Requisição</label><input type="text" id="mreq" placeholder="REQ-001"></div>
-        <div class="ff"><label>Responsável</label><input type="text" id="mresp" placeholder="Nome do responsável"></div>
-        <div class="ff"><label>Centro de custo</label><input type="text" id="mcc" placeholder="ex: 002.001"></div>
-      </div>
-      <div class="ff" style="margin-bottom:14px"><label>Observação</label><textarea id="mobs" placeholder="Fornecedor, NF, motivo..."></textarea></div>
-      <div class="ff" style="margin-bottom:14px">
-        <label>Secretarias</label>
-        <div style="display:flex;gap:7px;margin-bottom:8px">
-          <button class="btn-s" style="font-size:12px;padding:5px 10px" onclick="toggleAll(true)">Selecionar todas</button>
-          <button class="btn-s" style="font-size:12px;padding:5px 10px" onclick="toggleAll(false)">Limpar</button>
-        </div>
-        <div class="gc-grid" id="massa-gc"></div>
-      </div>
-      <div class="fa"><button class="btn-p" id="massa-btn" onclick="salvarMassa()">Registrar em todas selecionadas</button></div>
-      <div class="ss" id="massa-ss"></div>
-    </div>
-  </div>
-
   <!-- HISTÓRICO -->
   <div id="tab-historico" class="content" style="display:none">
     <div class="search-bar"><span class="si">🔍</span><input id="hs-q" placeholder="Pesquisar item, secretaria, responsável, requisição..." oninput="renderHist()"></div>
     <div class="filters">
       <select class="fs" id="hs-t" onchange="renderHist()"><option value="">Entrada e saída</option><option value="entrada">Entrada</option><option value="saida">Saída</option></select>
       <select class="fs" id="hs-s" onchange="renderHist()"><option value="">Todas as secretarias</option></select>
+      <select class="fs" id="hs-setor" onchange="renderHist()"><option value="">Todos os setores</option></select>
       <select class="fs" id="hs-i" onchange="renderHist()"><option value="">Todos os itens</option></select>
       <input type="date" class="fs" id="hs-d1" onchange="renderHist()" title="De">
       <input type="date" class="fs" id="hs-d2" onchange="renderHist()" title="Até">
     </div>
-    <div class="tw"><table><thead><tr><th>Data</th><th>Tipo</th><th>Item</th><th>Secretaria</th><th>Requisição</th><th>Responsável</th><th style="text-align:right">Qtd</th><th>Obs</th></tr></thead><tbody id="hist-tb"></tbody></table></div>
+    <div class="tw"><table><thead><tr><th>Data</th><th>Tipo</th><th>Item</th><th>Secretaria</th><th>Setor</th><th>Requisição</th><th>Responsável</th><th style="text-align:right">Qtd</th><th>Obs</th><th></th></tr></thead><tbody id="hist-tb"></tbody></table></div>
 
     <div class="danger-zone">
       <div class="dz-head">⚠ Zona de perigo — Reset completo do estoque</div>
@@ -330,6 +311,7 @@ tr:hover td{background:var(--bg)}
     <div class="search-bar"><span class="si">🔍</span><input id="es-q" placeholder="Pesquisar item ou categoria..." oninput="renderEst()"></div>
     <div class="filters">
       <select class="fs" id="es-s" onchange="renderEst()"><option value="">Todas as secretarias</option></select>
+      <select class="fs" id="es-setor" onchange="renderEst()"><option value="">Todos os setores</option></select>
       <select class="fs" id="es-c" onchange="renderEst()"><option value="">Todas as categorias</option></select>
     </div>
     <div id="est-container"></div>
@@ -394,6 +376,14 @@ tr:hover td{background:var(--bg)}
       </div>
 
       <div class="cfg-sec">
+        <h3>Setores / Unidades (por secretaria)</h3>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:8px">2ª camada da secretaria (ex.: Saúde → UBS, Fisioterapia). Secretaria sem setores lança direto (Geral).</div>
+        <select id="setor-sec" onchange="renderSetores()" style="width:100%;max-width:340px;padding:8px 11px;border:1px solid var(--border);border-radius:var(--r);font-family:var(--font);font-size:13px;background:var(--bg);color:var(--text);outline:none;margin-bottom:10px"></select>
+        <div class="tag-list" id="tg-setores"></div>
+        <div class="add-row"><input id="add-setor" placeholder="Nome do setor/unidade..." onkeydown="if(event.key==='Enter')addSetor()"><button class="btn-add" onclick="addSetor()">Adicionar</button></div>
+      </div>
+
+      <div class="cfg-sec">
         <h3>Itens do almoxarifado</h3>
         <div style="font-size:12px;color:var(--text3);margin-bottom:8px">Clique no nome para editar</div>
         <div class="tag-list" id="tg-itens"></div>
@@ -433,6 +423,39 @@ tr:hover td{background:var(--bg)}
         <button class="btn-s" onclick="exportAuditCSV()">Exportar CSV auditoria</button>
       </div>
       <div class="ss" id="cfg-ss"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR LANÇAMENTO -->
+<div class="overlay" id="edit-overlay" style="display:none">
+  <div class="overlay-card" style="text-align:left;max-width:500px">
+    <h2 style="margin-bottom:16px">Editar lançamento</h2>
+    <input type="hidden" id="e-id">
+    <div class="form-row">
+      <div class="ff"><label>Tipo</label><select id="e-tipo"><option value="entrada">Entrada</option><option value="saida">Saída</option></select></div>
+      <div class="ff"><label>Data</label><input type="date" id="e-data"></div>
+    </div>
+    <div class="form-row">
+      <div class="ff"><label>Secretaria</label><select id="e-sec" onchange="updateEditSetores()"></select></div>
+      <div class="ff" id="e-setor-wrap" style="display:none"><label>Setor / Unidade</label><select id="e-setor"></select></div>
+      <div class="ff"><label>Item</label><select id="e-item"></select></div>
+    </div>
+    <div class="form-row">
+      <div class="ff"><label>Quantidade</label><input type="number" id="e-qty" min="0.001" step="any"></div>
+      <div class="ff"><label>Nº Requisição</label><input type="text" id="e-req"></div>
+    </div>
+    <div class="form-row">
+      <div class="ff"><label>Responsável</label><input type="text" id="e-resp"></div>
+      <div class="ff"><label>Centro de custo</label><input type="text" id="e-cc"></div>
+    </div>
+    <div class="ff" style="margin-bottom:16px"><label>Observação</label><textarea id="e-obs"></textarea></div>
+    <div style="display:flex;gap:9px;justify-content:space-between;flex-wrap:wrap">
+      <button class="btn-danger" onclick="deleteMov()">Excluir</button>
+      <div style="display:flex;gap:9px">
+        <button class="btn-s" onclick="closeEditMov()">Cancelar</button>
+        <button class="btn-p" onclick="saveEditMov()">Salvar alterações</button>
+      </div>
     </div>
   </div>
 </div>
@@ -484,6 +507,7 @@ const defaultData = () => ({
     {nome:'Óculos de segurança',cat:'EPI',un:'un'},
     {nome:'Fio elétrico 2,5mm (metro)',cat:'Elétrico/Hidráulico',un:'m'},
   ],
+  setores: {},        // { [secretaria]: [setor1, setor2, ...] } — 2ª camada
   movimentos: [],
   pendingMovs: [],   // movimentos gravados offline, aguardando envio à nuvem
   lastSync: null,
@@ -492,7 +516,27 @@ const defaultData = () => ({
 
 let S = JSON.parse(localStorage.getItem(KEY) || 'null') || defaultData();
 if (!Array.isArray(S.pendingMovs)) S.pendingMovs = [];
+if (!S.setores || typeof S.setores !== 'object' || Array.isArray(S.setores)) S.setores = {};
 const save = () => localStorage.setItem(KEY, JSON.stringify(S));
+
+// ---- SETORES (2ª camada: Secretaria → Setor) ----
+const GERAL = 'Geral';
+function setoresDe(sec) { return (S.setores && S.setores[sec]) || []; }
+function setorLabel(s) { return s || GERAL; }
+// Setores a exibir para uma secretaria: configurados + os que já aparecem em movimentos.
+function setoresExibir(sec) {
+  const set = new Set(setoresDe(sec));
+  S.movimentos.forEach(m => { if (m.sec === sec) set.add(m.setor || ''); });
+  if (set.size === 0) set.add('');
+  return [...set].sort((a, b) => (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b, 'pt-BR')));
+}
+// Todos os setores existentes (configurados + usados), para filtros.
+function allSetores() {
+  const set = new Set();
+  Object.values(S.setores || {}).forEach(arr => (arr || []).forEach(s => set.add(s)));
+  S.movimentos.forEach(m => { if (m.setor) set.add(m.setor); });
+  return [...set].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
 
 // ---- SENHAS (SHA-256) ----
 // Implementação compacta e síncrona de SHA-256 (funciona em file:// e http).
@@ -628,8 +672,8 @@ function doLogout() {
 }
 // Abas permitidas por perfil
 const ROLE_TABS = {
-  admin: ['dashboard','lancamento','massa','historico','estoque','relatorio','auditoria','config'],
-  usuario: ['dashboard','lancamento','massa','estoque','relatorio'],
+  admin: ['dashboard','lancamento','historico','estoque','relatorio','auditoria','config'],
+  usuario: ['dashboard','lancamento','estoque','relatorio'],
   visualizacao: ['estoque','relatorio']
 };
 const ROLE_LABEL = { admin:'Admin', usuario:'Usuário', visualizacao:'Visualização' };
@@ -660,7 +704,7 @@ function showTab(tab, btn) {
   document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-' + tab).style.display = '';
   btn.classList.add('active');
-  ({dashboard:renderDash,lancamento:initLanc,massa:initMassa,historico:renderHist,estoque:renderEst,relatorio:renderRelatorio,auditoria:renderAudit,config:renderConfig})[tab]?.();
+  ({dashboard:renderDash,lancamento:initLanc,historico:renderHist,estoque:renderEst,relatorio:renderRelatorio,auditoria:renderAudit,config:renderConfig})[tab]?.();
 }
 
 async function initApp() {
@@ -718,6 +762,7 @@ async function syncFull(manual = false) {
       if (Array.isArray(c.secretarias) && c.secretarias.length) S.secretarias = c.secretarias;
       if (Array.isArray(c.itens) && c.itens.length) S.itens = c.itens;
       if (Array.isArray(c.categorias) && c.categorias.length) S.categorias = c.categorias;
+      if (c.setores && typeof c.setores === 'object' && !Array.isArray(c.setores)) S.setores = c.setores;
       S.users = c.users;
     }
     // Movimentos: adota os da nuvem; se a nuvem está vazia mas há locais, sobe-os.
@@ -764,7 +809,7 @@ async function pushConfig(silent = false) {
   if (!(await fbReady())) { if (!silent) toast('Sem conexão com o Firebase'); updateFbStatus(); return; }
   try {
     setSync('loading', silent ? '⟳ Salvando...' : '⟳ Enviando...');
-    await window.FB.saveConfig({ secretarias: S.secretarias, itens: S.itens, categorias: S.categorias, users: S.users });
+    await window.FB.saveConfig({ secretarias: S.secretarias, itens: S.itens, categorias: S.categorias, users: S.users, setores: S.setores });
     setSync('ok', silent ? '✓ Salvo' : '✓ Enviado');
     if (!silent) toast('Configurações salvas na nuvem!');
   } catch (e) {
@@ -796,7 +841,7 @@ async function forcePush() {
   if (!confirm('Isto sobrescreve a nuvem com os dados deste dispositivo. Continuar?')) return;
   showLoading(true, 'Enviando dados locais para a nuvem...');
   try {
-    await window.FB.saveConfig({ secretarias: S.secretarias, itens: S.itens, categorias: S.categorias, users: S.users });
+    await window.FB.saveConfig({ secretarias: S.secretarias, itens: S.itens, categorias: S.categorias, users: S.users, setores: S.setores });
     const all = S.movimentos.concat(S.pendingMovs);
     if (all.length) await window.FB.addMovimentos(all);
     S.pendingMovs = [];
@@ -825,15 +870,17 @@ window.addEventListener('fb-error', () => { setSync('err', '✗ Firebase'); upda
 window.addEventListener('online', () => { flushPending().then(() => { if (S.currentUser) syncFull(false); }); });
 
 // ---- SALDOS ----
+// Saldos por Secretaria → Setor → Item. Chave: sec||setor||item (setor '' = Geral).
 function saldos() {
   const m = {};
   S.movimentos.forEach(mv => {
-    const k = mv.sec + '||' + mv.item;
+    const k = mv.sec + '||' + (mv.setor || '') + '||' + mv.item;
     if (!m[k]) m[k] = 0;
     m[k] += mv.tipo === 'entrada' ? +mv.qty : -(+mv.qty);
   });
   return m;
 }
+function saldoDe(sd, sec, setor, item) { return sd[sec + '||' + (setor || '') + '||' + item] || 0; }
 
 // ---- UTILS ----
 const today = () => new Date().toISOString().slice(0,10);
@@ -848,31 +895,38 @@ function populateSel(id, vals, all) {
 // ---- DASHBOARD ----
 function renderDash() {
   populateSel('ds-sec', S.secretarias, 'Todas as secretarias');
+  populateSel('ds-setor', allSetores(), 'Todos os setores');
   populateSel('ds-cat', S.categorias, 'Todas as categorias');
   const q = (document.getElementById('ds-q')?.value||'').toLowerCase();
   const secF = document.getElementById('ds-sec')?.value||'';
+  const setF = document.getElementById('ds-setor')?.value||'';
   const catF = document.getElementById('ds-cat')?.value||'';
   const salF = document.getElementById('ds-saldo')?.value||'';
   const sd = saldos();
   let rows = [];
   S.secretarias.forEach(sec => {
     if (secF && sec !== secF) return;
-    S.itens.forEach(it => {
-      if (catF && it.cat !== catF) return;
-      if (q && ![it.nome,it.cat,sec].join(' ').toLowerCase().includes(q)) return;
-      const s = sd[sec+'||'+it.nome]||0;
-      if (salF==='pos'&&s<=0) return;
-      if (salF==='zero'&&s!==0) return;
-      if (salF==='neg'&&s>=0) return;
-      rows.push({sec,nome:it.nome,cat:it.cat,un:it.un||'',saldo:s});
+    setoresExibir(sec).forEach(setor => {
+      const setL = setorLabel(setor);
+      if (setF && setL !== setF) return;
+      S.itens.forEach(it => {
+        if (catF && it.cat !== catF) return;
+        if (q && ![it.nome,it.cat,sec,setL].join(' ').toLowerCase().includes(q)) return;
+        const s = saldoDe(sd, sec, setor, it.nome);
+        if (salF==='pos'&&s<=0) return;
+        if (salF==='zero'&&s!==0) return;
+        if (salF==='neg'&&s>=0) return;
+        rows.push({sec,setor:setL,nome:it.nome,cat:it.cat,un:it.un||'',saldo:s});
+      });
     });
   });
   document.getElementById('dash-tb').innerHTML = rows.length ? rows.map(r=>`<tr>
     <td>${r.nome}</td><td><span class="badge bc">${r.cat}</span></td>
     <td style="font-size:12px;color:var(--text2)">${r.sec}</td>
+    <td style="font-size:12px;color:var(--text2)">${r.setor}</td>
     <td style="font-size:12px;color:var(--text3)">${r.un}</td>
     <td class="mono" style="text-align:right;font-weight:500;color:${r.saldo<0?'var(--red-mid)':r.saldo===0?'var(--text3)':'var(--green-mid)'}">${+r.saldo.toFixed(4)}</td>
-  </tr>`).join('') : `<tr><td colspan="5" class="empty">Nenhum resultado</td></tr>`;
+  </tr>`).join('') : `<tr><td colspan="6" class="empty">Nenhum resultado</td></tr>`;
   const sv = Object.values(saldos());
   const ls = S.lastSync ? new Date(S.lastSync).toLocaleString('pt-BR') : 'nunca';
   document.getElementById('sum-cards').innerHTML = `
@@ -894,9 +948,24 @@ function itemOptions(list) {
 }
 function initLanc() {
   populateSel('ls', S.secretarias, 'Selecione...');
+  updateLancSetores();
   filterLancItens();
   document.getElementById('li-novo').style.display = allowedTabs().includes('config') ? '' : 'none';
   if (!document.getElementById('ld').value) document.getElementById('ld').value = today();
+}
+// Mostra o seletor de setor conforme a secretaria escolhida.
+function updateLancSetores() {
+  const sec = document.getElementById('ls').value;
+  const setores = setoresDe(sec);
+  const wrap = document.getElementById('lsetor-wrap');
+  const sel = document.getElementById('lsetor');
+  if (setores.length) {
+    sel.innerHTML = '<option value="">Selecione o setor...</option>' + setores.map(s => `<option value="${s}">${s}</option>`).join('');
+    wrap.style.display = '';
+  } else {
+    sel.innerHTML = '';
+    wrap.style.display = 'none';
+  }
 }
 // Filtra o seletor de itens do lançamento pela barra de pesquisa.
 function filterLancItens() {
@@ -923,10 +992,12 @@ async function salvarLanc() {
     data=document.getElementById('ld').value, req=document.getElementById('lreq').value.trim(),
     resp=document.getElementById('lresp').value.trim(), cc=document.getElementById('lcc').value.trim(),
     obs=document.getElementById('lobs').value.trim();
+  const setor=document.getElementById('lsetor').value;
   if (!qty||qty<=0){toast('Quantidade inválida');return}
   if (!data){toast('Informe a data');return}
   if (!sec){toast('Selecione a secretaria');return}
-  const mov={id:Date.now(),data,tipo,sec,item,qty,req,resp,cc,obs,user:S.currentUser,ts:new Date().toISOString()};
+  if (setoresDe(sec).length && !setor){toast('Selecione o setor');return}
+  const mov={id:Date.now(),data,tipo,sec,setor,item,qty,req,resp,cc,obs,user:S.currentUser,ts:new Date().toISOString()};
   S.movimentos.unshift(mov); save();
   setSS('lanc-ss','ok','Registrado localmente ✓');
   toast('Lançamento registrado!');
@@ -934,84 +1005,152 @@ async function salvarLanc() {
   await pushMovimentos([mov]);
 }
 
-// ---- MASSA ----
-function initMassa() {
-  document.getElementById('mi').innerHTML = itemOptions(sortedItens());
-  if (!document.getElementById('md').value) document.getElementById('md').value = today();
-  document.getElementById('massa-gc').innerHTML = S.secretarias.map(s=>`
-    <label class="gc" onclick="this.classList.toggle('sel')">
-      <input type="checkbox" value="${s}"> ${s}
-    </label>`).join('');
-}
-function toggleAll(v) {
-  document.querySelectorAll('#massa-gc input').forEach(cb=>{cb.checked=v;cb.closest('.gc').classList.toggle('sel',v);});
-}
-async function salvarMassa() {
-  const tipo=document.getElementById('mt').value, item=document.getElementById('mi').value,
-    qty=parseFloat(document.getElementById('mq').value), data=document.getElementById('md').value,
-    req=document.getElementById('mreq').value.trim(), resp=document.getElementById('mresp').value.trim(),
-    cc=document.getElementById('mcc').value.trim(), obs=document.getElementById('mobs').value.trim();
-  const secs=[...document.querySelectorAll('#massa-gc input:checked')].map(cb=>cb.value);
-  if (!qty||qty<=0){toast('Quantidade inválida');return}
-  if (!data){toast('Informe a data');return}
-  if (!secs.length){toast('Selecione ao menos uma secretaria');return}
-  const movs=secs.map(sec=>({id:Date.now()+Math.random(),data,tipo,sec,item,qty,req,resp,cc,obs,user:S.currentUser,ts:new Date().toISOString()}));
-  S.movimentos.unshift(...movs); save();
-  setSS('massa-ss','ok',`${secs.length} lançamentos registrados ✓`);
-  toast(`${secs.length} lançamentos registrados!`);
-  ['mq','mreq','mresp','mcc','mobs'].forEach(id=>document.getElementById(id).value='');
-  toggleAll(false);
-  await pushMovimentos(movs);
-}
-
 // ---- HISTÓRICO ----
 function renderHist() {
   populateSel('hs-s',S.secretarias,'Todas as secretarias');
+  populateSel('hs-setor',allSetores(),'Todos os setores');
   populateSel('hs-i',S.itens.map(i=>i.nome),'Todos os itens');
   const q=(document.getElementById('hs-q')?.value||'').toLowerCase();
   const tf=document.getElementById('hs-t')?.value||'', sf=document.getElementById('hs-s')?.value||'',
+    setf=document.getElementById('hs-setor')?.value||'',
     itf=document.getElementById('hs-i')?.value||'', d1=document.getElementById('hs-d1')?.value||'',
     d2=document.getElementById('hs-d2')?.value||'';
   const rows=S.movimentos.filter(m=>{
     if(tf&&m.tipo!==tf)return false; if(sf&&m.sec!==sf)return false;
+    if(setf&&setorLabel(m.setor)!==setf)return false;
     if(itf&&m.item!==itf)return false; if(d1&&m.data<d1)return false; if(d2&&m.data>d2)return false;
-    if(q&&![m.item,m.sec,m.resp||'',m.req||'',m.obs||''].join(' ').toLowerCase().includes(q))return false;
+    if(q&&![m.item,m.sec,setorLabel(m.setor),m.resp||'',m.req||'',m.obs||''].join(' ').toLowerCase().includes(q))return false;
     return true;
   });
   document.getElementById('hist-tb').innerHTML = rows.length ? rows.map(m=>`<tr>
     <td class="mono" style="font-size:12px;white-space:nowrap">${m.data}</td>
     <td><span class="badge ${m.tipo==='entrada'?'bi':'bo'}">${m.tipo}</span></td>
     <td>${m.item}</td><td style="font-size:12px;color:var(--text2)">${m.sec}</td>
+    <td style="font-size:12px;color:var(--text2)">${setorLabel(m.setor)}</td>
     <td style="font-size:12px;color:var(--text3)">${m.req||'—'}</td>
     <td style="font-size:12px">${m.resp||'—'}</td>
     <td class="mono" style="text-align:right;font-weight:500">${+parseFloat(m.qty).toFixed(4)}</td>
     <td style="font-size:12px;color:var(--text2);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.obs||'—'}</td>
-  </tr>`).join('') : `<tr><td colspan="8" class="empty">Nenhum lançamento</td></tr>`;
+    <td style="white-space:nowrap"><button class="btn-sm" style="padding:3px 9px" onclick="openEditMov('${m.id}')">✎ Editar</button></td>
+  </tr>`).join('') : `<tr><td colspan="10" class="empty">Nenhum lançamento</td></tr>`;
+}
+
+// ---- EDITAR / EXCLUIR LANÇAMENTO ----
+function openEditMov(id) {
+  const m = S.movimentos.find(x => String(x.id) === String(id));
+  if (!m) { toast('Lançamento não encontrado'); return; }
+  document.getElementById('e-id').value = m.id;
+  document.getElementById('e-tipo').value = m.tipo;
+  document.getElementById('e-data').value = m.data;
+  populateSel('e-sec', S.secretarias, 'Selecione...');
+  document.getElementById('e-sec').value = m.sec;
+  updateEditSetores(m.setor || '');
+  document.getElementById('e-item').innerHTML = itemOptions(sortedItens());
+  document.getElementById('e-item').value = m.item;
+  document.getElementById('e-qty').value = m.qty;
+  document.getElementById('e-req').value = m.req || '';
+  document.getElementById('e-resp').value = m.resp || '';
+  document.getElementById('e-cc').value = m.cc || '';
+  document.getElementById('e-obs').value = m.obs || '';
+  document.getElementById('edit-overlay').style.display = 'flex';
+}
+function closeEditMov() { document.getElementById('edit-overlay').style.display = 'none'; }
+// Popula o seletor de setor do modal conforme a secretaria escolhida.
+function updateEditSetores(selected) {
+  const sec = document.getElementById('e-sec').value;
+  const setores = setoresDe(sec);
+  const wrap = document.getElementById('e-setor-wrap');
+  const sel = document.getElementById('e-setor');
+  if (setores.length) {
+    sel.innerHTML = '<option value="">Selecione o setor...</option>' + setores.map(s => `<option value="${s}">${s}</option>`).join('');
+    if (selected !== undefined && setores.includes(selected)) sel.value = selected;
+    wrap.style.display = '';
+  } else {
+    sel.innerHTML = '';
+    wrap.style.display = 'none';
+  }
+}
+async function saveEditMov() {
+  const id = document.getElementById('e-id').value;
+  const m = S.movimentos.find(x => String(x.id) === String(id));
+  if (!m) { closeEditMov(); return; }
+  const qty = parseFloat(document.getElementById('e-qty').value);
+  const data = document.getElementById('e-data').value;
+  if (!qty || qty <= 0) { toast('Quantidade inválida'); return; }
+  if (!data) { toast('Informe a data'); return; }
+  m.tipo = document.getElementById('e-tipo').value;
+  m.data = data;
+  m.sec = document.getElementById('e-sec').value;
+  m.setor = document.getElementById('e-setor').value;
+  if (setoresDe(m.sec).length && !m.setor) { toast('Selecione o setor'); return; }
+  m.item = document.getElementById('e-item').value;
+  m.qty = qty;
+  m.req = document.getElementById('e-req').value.trim();
+  m.resp = document.getElementById('e-resp').value.trim();
+  m.cc = document.getElementById('e-cc').value.trim();
+  m.obs = document.getElementById('e-obs').value.trim();
+  m.editedBy = S.currentUser; m.editedTs = new Date().toISOString();
+  save();
+  closeEditMov();
+  renderHist();
+  toast('Lançamento atualizado');
+  await pushMovimentos([m]); // setDoc por id sobrescreve na nuvem
+}
+async function deleteMov() {
+  const id = document.getElementById('e-id').value;
+  if (!confirm('Excluir este lançamento definitivamente?')) return;
+  const idx = S.movimentos.findIndex(x => String(x.id) === String(id));
+  if (idx < 0) { closeEditMov(); return; }
+  const rem = S.movimentos.splice(idx, 1)[0];
+  S.pendingMovs = S.pendingMovs.filter(x => String(x.id) !== String(id));
+  save();
+  closeEditMov();
+  renderHist();
+  toast('Lançamento excluído');
+  await pushDeleteMov(rem.id);
+}
+async function pushDeleteMov(id) {
+  if (!(await fbReady())) { setSync('err', '✗ Offline'); updateFbStatus(); return; }
+  try {
+    setSync('loading', '⟳ Excluindo...');
+    await window.FB.deleteMovimentos([id]);
+    setSync('ok', '✓ Excluído');
+  } catch (e) {
+    setSync('err', '✗ Erro ao excluir');
+    toast('Exclusão local feita; falha ao remover da nuvem.');
+  }
+  updateFbStatus();
 }
 
 // ---- ESTOQUE ----
 function renderEst() {
   populateSel('es-s',S.secretarias,'Todas as secretarias');
+  populateSel('es-setor',allSetores(),'Todos os setores');
   populateSel('es-c',S.categorias,'Todas as categorias');
   const q=(document.getElementById('es-q')?.value||'').toLowerCase();
-  const sf=document.getElementById('es-s')?.value||'', cf=document.getElementById('es-c')?.value||'';
+  const sf=document.getElementById('es-s')?.value||'', setF=document.getElementById('es-setor')?.value||'', cf=document.getElementById('es-c')?.value||'';
   const sd=saldos(), container=document.getElementById('est-container');
   container.innerHTML='';
+  const itemRow=(sec,setor,it)=>{const s=saldoDe(sd,sec,setor,it.nome);const c=s<0?'var(--red-mid)':s===0?'var(--text3)':'var(--green-mid)';return`<tr><td>${it.nome}</td><td><span class="badge bc">${it.cat}</span></td><td style="font-size:12px;color:var(--text3)">${it.un||''}</td><td class="mono" style="text-align:right;color:${c};font-weight:500">${+s.toFixed(4)}</td></tr>`;};
+  const itensFiltrados=S.itens.filter(it=>{
+    if(cf&&it.cat!==cf)return false;
+    if(q&&![it.nome,it.cat].join(' ').toLowerCase().includes(q))return false;
+    return true;
+  });
+  if(!itensFiltrados.length)return;
   (sf?[sf]:S.secretarias).forEach(sec=>{
-    const rows=S.itens.filter(it=>{
-      if(cf&&it.cat!==cf)return false;
-      if(q&&![it.nome,it.cat].join(' ').toLowerCase().includes(q))return false;
-      return true;
+    const temSetores=setoresDe(sec).length>0;
+    const setores=setoresExibir(sec).filter(setor=>!setF||setorLabel(setor)===setF);
+    if(!setores.length)return;
+    const head=`<thead><tr><th>Item</th><th>Categoria</th><th>Un.</th><th style="text-align:right">Saldo</th></tr></thead>`;
+    let inner='';
+    setores.forEach(setor=>{
+      if(temSetores) inner+=`<div class="est-setor-hdr">↳ ${setorLabel(setor)}</div>`;
+      inner+=`<table>${head}<tbody>${itensFiltrados.map(it=>itemRow(sec,setor,it)).join('')}</tbody></table>`;
     });
-    if(!rows.length)return;
     const div=document.createElement('div');
-    div.style.marginBottom='18px';
-    div.innerHTML=`
-      <div style="font-size:12px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;padding:9px 14px;background:var(--bg);border:1px solid var(--border);border-bottom:none;border-radius:var(--rl) var(--rl) 0 0">${sec}</div>
-      <div class="tw" style="border-radius:0 0 var(--rl) var(--rl)"><table>
-        <thead><tr><th>Item</th><th>Categoria</th><th>Un.</th><th style="text-align:right">Saldo</th></tr></thead>
-        <tbody>${rows.map(it=>{const s=sd[sec+'||'+it.nome]||0;const c=s<0?'var(--red-mid)':s===0?'var(--text3)':'var(--green-mid)';return`<tr><td>${it.nome}</td><td><span class="badge bc">${it.cat}</span></td><td style="font-size:12px;color:var(--text3)">${it.un||''}</td><td class="mono" style="text-align:right;color:${c};font-weight:500">${+s.toFixed(4)}</td></tr>`;}).join('')}</tbody>
-      </table></div>`;
+    div.className='est-sec';
+    div.innerHTML=`<div class="est-sec-hdr">${sec}</div>${inner}`;
     container.appendChild(div);
   });
 }
@@ -1041,7 +1180,7 @@ function renderAudit() {
     <div class="stat-box"><div class="lbl">Últimos 7 dias</div><div class="val c-blue">${ult7}</div></div>
     <div class="stat-box"><div class="lbl">Usuários ativos</div><div class="val c-amber">${usrs}</div></div>`;
   const sd=saldos(), alerts=[];
-  Object.entries(sd).forEach(([k,v])=>{if(v<0){const[sec,item]=k.split('||');alerts.push(`Saldo negativo: <strong>${item}</strong> em <strong>${sec}</strong> (${+v.toFixed(4)})`)}});
+  Object.entries(sd).forEach(([k,v])=>{if(v<0){const[sec,setor,item]=k.split('||');const loc=setor?`${sec} / ${setor}`:sec;alerts.push(`Saldo negativo: <strong>${item}</strong> em <strong>${loc}</strong> (${+v.toFixed(4)})`)}});
   const corte=new Date();corte.setDate(corte.getDate()-30);const cs=corte.toISOString().slice(0,10);
   S.itens.forEach(it=>{const ul=S.movimentos.find(m=>m.item===it.nome);if(!ul||ul.data<cs)alerts.push(`Sem movimentação há +30 dias: <strong>${it.nome}</strong>`)});
   document.getElementById('aud-alerts').innerHTML=alerts.slice(0,8).map(a=>`<div class="alert-card">⚠ ${a}</div>`).join('');
@@ -1049,7 +1188,7 @@ function renderAudit() {
     <div class="tl-item">
       <div class="tl-dot ${m.tipo==='entrada'?'dot-in':'dot-out'}"></div>
       <div class="tl-body">
-        <div class="tl-title">${m.item} <span style="font-weight:400;color:var(--text2)">→ ${m.sec}</span></div>
+        <div class="tl-title">${m.item} <span style="font-weight:400;color:var(--text2)">→ ${m.sec}${m.setor?' / '+m.setor:''}</span></div>
         <div class="tl-meta">${m.data} · por <strong>${m.user||'—'}</strong>${m.req?` · Req: ${m.req}`:''}${m.resp?` · Resp: ${m.resp}`:''}${m.cc?` · CC: ${m.cc}`:''}${m.obs?`<br><span style="color:var(--text3)">${m.obs}</span>`:''}</div>
       </div>
       <div class="tl-qty" style="color:${m.tipo==='entrada'?'var(--green-mid)':'var(--red-mid)'}">
@@ -1074,20 +1213,36 @@ function renderRelatorioPreview() {
   let html = `<div class="rep-head">Almox<span>Control</span> — Relatório de Saldos</div>
     <div class="rep-scope">Escopo: ${escopo} · Gerado em ${now} · Última sincronização: ${ls}</div>
     <hr class="rep-rule">`;
-  secs.forEach(sec => {
-    let rows = S.itens.map(it => ({ nome: it.nome, cat: it.cat, un: it.un || '', saldo: sd[sec + '||' + it.nome] || 0 }));
-    if (itF === 'nonzero') rows = rows.filter(r => r.saldo !== 0);
-    else if (itF === 'pos') rows = rows.filter(r => r.saldo > 0);
-    else if (itF === 'neg') rows = rows.filter(r => r.saldo < 0);
-    rows.sort((a, b) => a.cat.localeCompare(b.cat, 'pt-BR') || a.nome.localeCompare(b.nome, 'pt-BR'));
-    html += `<div class="rep-sec"><div class="rep-sec-title">${sec}</div>`;
-    if (!rows.length) { html += `<div class="rep-empty">Nenhum item para exibir.</div></div>`; return; }
-    html += `<table class="rep-table"><thead><tr><th>Item</th><th>Categoria</th><th>Un.</th><th class="r">Saldo atual</th></tr></thead><tbody>`;
+  const filtraSaldo = arr => {
+    if (itF === 'nonzero') return arr.filter(r => r.saldo !== 0);
+    if (itF === 'pos') return arr.filter(r => r.saldo > 0);
+    if (itF === 'neg') return arr.filter(r => r.saldo < 0);
+    return arr;
+  };
+  const tabela = rows => {
+    let t = `<table class="rep-table"><thead><tr><th>Item</th><th>Categoria</th><th>Un.</th><th class="r">Saldo atual</th></tr></thead><tbody>`;
     rows.forEach(r => {
       const c = r.saldo < 0 ? 'var(--red-mid)' : 'var(--text)';
-      html += `<tr><td class="rep-item">${r.nome}</td><td class="rep-cat">${r.cat}</td><td class="rep-un">${r.un}</td><td class="r rep-saldo" style="color:${c}">${+r.saldo.toFixed(4)}</td></tr>`;
+      t += `<tr><td class="rep-item">${r.nome}</td><td class="rep-cat">${r.cat}</td><td class="rep-un">${r.un}</td><td class="r rep-saldo" style="color:${c}">${+r.saldo.toFixed(4)}</td></tr>`;
     });
-    html += `</tbody></table><div class="rep-count">${rows.length} item(ns)</div></div>`;
+    return t + `</tbody></table><div class="rep-count">${rows.length} item(ns)</div>`;
+  };
+  secs.forEach(sec => {
+    const temSetores = setoresDe(sec).length > 0;
+    html += `<div class="rep-sec"><div class="rep-sec-title">${sec}</div>`;
+    if (temSetores) {
+      setoresExibir(sec).forEach(setor => {
+        let rows = S.itens.map(it => ({ nome: it.nome, cat: it.cat, un: it.un || '', saldo: saldoDe(sd, sec, setor, it.nome) }));
+        rows = filtraSaldo(rows).sort((a, b) => a.cat.localeCompare(b.cat, 'pt-BR') || a.nome.localeCompare(b.nome, 'pt-BR'));
+        html += `<div class="rep-setor-title">↳ ${setorLabel(setor)}</div>`;
+        html += rows.length ? tabela(rows) : `<div class="rep-empty">Nenhum item para exibir.</div>`;
+      });
+    } else {
+      let rows = S.itens.map(it => ({ nome: it.nome, cat: it.cat, un: it.un || '', saldo: saldoDe(sd, sec, '', it.nome) }));
+      rows = filtraSaldo(rows).sort((a, b) => a.cat.localeCompare(b.cat, 'pt-BR') || a.nome.localeCompare(b.nome, 'pt-BR'));
+      html += rows.length ? tabela(rows) : `<div class="rep-empty">Nenhum item para exibir.</div>`;
+    }
+    html += `</div>`;
   });
   document.getElementById('report-output').innerHTML = html;
 }
@@ -1100,6 +1255,7 @@ function printRelatorio() {
 function renderConfig() {
   updateFbStatus();
   populateSel('ai-cat', S.categorias, 'Selecione a categoria...');
+  renderSetores();
   document.getElementById('tg-secs').innerHTML=S.secretarias.map((s,i)=>`<div class="tag"><span class="editable" style="cursor:pointer;border-bottom:1px dashed var(--border)" onclick="editSec(${i})">${s}</span><button class="tag-del" onclick="removeSec(${i})">×</button></div>`).join('');
   document.getElementById('tg-itens').innerHTML=S.itens.map((it,i)=>`<div class="tag"><span style="cursor:pointer;border-bottom:1px dashed var(--border)" onclick="editItem(${i})">${it.nome}</span> <span style="font-size:11px;color:var(--text3)">[${it.cat}/${it.un||''}]</span><button class="tag-del" onclick="removeItem(${i})">×</button></div>`).join('');
   document.getElementById('tg-cats').innerHTML=S.categorias.map((c,i)=>`<div class="tag"><span style="cursor:pointer;border-bottom:1px dashed var(--border)" onclick="editCat(${i})">${c}</span><button class="tag-del" onclick="removeCat(${i})">×</button></div>`).join('');
@@ -1112,8 +1268,19 @@ function renderConfig() {
   }).join('');
 }
 function addSec(){const v=document.getElementById('add-sec').value.trim();if(!v)return;if(S.secretarias.includes(v)){toast('Já existe');return}S.secretarias.push(v);autoSave();renderConfig();document.getElementById('add-sec').value='';}
-function removeSec(i){if(S.secretarias.length<=1){toast('Mínimo 1');return}S.secretarias.splice(i,1);autoSave();renderConfig();}
-function editSec(i){const n=prompt('Editar:',S.secretarias[i]);if(n?.trim()){S.secretarias[i]=n.trim();autoSave();renderConfig();}}
+function removeSec(i){if(S.secretarias.length<=1){toast('Mínimo 1');return}const nome=S.secretarias[i];S.secretarias.splice(i,1);if(S.setores[nome])delete S.setores[nome];autoSave();renderConfig();}
+function editSec(i){const antigo=S.secretarias[i];const n=prompt('Editar:',antigo);if(n?.trim()){const novo=n.trim();S.secretarias[i]=novo;if(S.setores[antigo]){S.setores[novo]=S.setores[antigo];delete S.setores[antigo];}S.movimentos.forEach(m=>{if(m.sec===antigo)m.sec=novo;});autoSave();renderConfig();}}
+// ---- SETORES ----
+function renderSetores(){
+  populateSel('setor-sec',S.secretarias,'Selecione a secretaria...');
+  const sec=document.getElementById('setor-sec').value;
+  const box=document.getElementById('tg-setores');
+  if(!sec){box.innerHTML='<span style="font-size:12px;color:var(--text3)">Escolha uma secretaria acima para ver/editar seus setores.</span>';return;}
+  const list=setoresDe(sec);
+  box.innerHTML=list.length?list.map((s,i)=>`<div class="tag"><span>${s}</span><button class="tag-del" onclick="removeSetor(${i})">×</button></div>`).join(''):'<span style="font-size:12px;color:var(--text3)">Sem setores — lançamentos vão para "Geral".</span>';
+}
+function addSetor(){const sec=document.getElementById('setor-sec').value;if(!sec){toast('Escolha uma secretaria');return}const v=document.getElementById('add-setor').value.trim();if(!v)return;if(!S.setores[sec])S.setores[sec]=[];if(S.setores[sec].includes(v)){toast('Já existe');return}S.setores[sec].push(v);autoSave();renderSetores();document.getElementById('add-setor').value='';}
+function removeSetor(i){const sec=document.getElementById('setor-sec').value;if(!sec||!S.setores[sec])return;S.setores[sec].splice(i,1);if(!S.setores[sec].length)delete S.setores[sec];autoSave();renderSetores();}
 function addItem(){const n=document.getElementById('ai-nome').value.trim(),c=document.getElementById('ai-cat').value.trim(),u=document.getElementById('ai-un').value.trim();if(!n||!c){toast('Nome e categoria obrigatórios');return}S.itens.push({nome:n,cat:c,un:u});autoSave();renderConfig();['ai-nome','ai-cat','ai-un'].forEach(id=>document.getElementById(id).value='');}
 function removeItem(i){S.itens.splice(i,1);autoSave();renderConfig();}
 function editItem(i){const n=prompt('Editar nome:',S.itens[i].nome);if(n?.trim()){S.itens[i].nome=n.trim();autoSave();renderConfig();}}
@@ -1200,6 +1367,7 @@ window.FB = {
       itens: cfgObj.itens || [],
       categorias: cfgObj.categorias || [],
       users: cfgObj.users || [],
+      setores: cfgObj.setores || {},
       updatedAt: Date.now()
     });
   },
@@ -1210,6 +1378,16 @@ window.FB = {
       const chunk = movs.slice(i, i + 400);
       const batch = writeBatch(db);
       chunk.forEach(m => batch.set(doc(db, MOV_COL, String(m.id)), sanitize(m)));
+      await batch.commit();
+    }
+  },
+
+  // Apaga movimentos específicos por id (edição/exclusão no histórico).
+  async deleteMovimentos(ids) {
+    for (let i = 0; i < ids.length; i += 400) {
+      const chunk = ids.slice(i, i + 400);
+      const batch = writeBatch(db);
+      chunk.forEach(id => batch.delete(doc(db, MOV_COL, String(id))));
       await batch.commit();
     }
   },
